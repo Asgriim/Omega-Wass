@@ -13,8 +13,6 @@ using u32 = uint32_t;
 using i32 = int32_t;
 using i64 = int64_t;
 
-
-
 enum ValType : int8_t {
     I32 = 0x7F,
     I64 = 0x7E,
