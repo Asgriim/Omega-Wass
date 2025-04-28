@@ -1,7 +1,6 @@
 
 #include "util/module_parser.hpp"
-#include "bytecode/test.hpp"
-
+#include "runtime/runtime_structs.hpp"
 #include <cstdint>
 #include <vector>
 
@@ -82,12 +81,9 @@ std::vector<uint8_t> make_wasm_module_from_code(const std::vector<uint8_t>& code
 
 
 int main(int argc, char **argv) {
-
-    omega::wass::ModuleParser parser("/home/asgrim/CLionProjects/OWasm-vm/wasm-examples/hello_import.wasm");
+    omega::wass::ModuleParser parser("/home/asgrim/CLionProjects/Omega-Wass/wasm-examples/hello_import.wasm");
     auto module = parser.parseFromFile() ;
-    omega::wass::bytecode_parser optimizer;
-    auto v = optimizer.parse(module.codeSection[0].code);
-//    auto с = make_wasm_module_from_code(v);
+    auto map = omega::wass::createLabelMap(module.codeSection[0].code);
 
 // Записать в файл
 //    std::ofstream out("test.wasm", std::ios::binary);
