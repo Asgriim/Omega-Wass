@@ -7,75 +7,75 @@
 #include <stack>
 #include <stdexcept>
 namespace omega::wass {
-
-typedef int64_t (*NativeFuncType)(...);
-
+constexpr u32 WASM_PAGE_SIZE = 1024 * 64;
 
 struct ControlBlock {
-    Bytecode type;
+    runtime::Bytecode type;
     u32 start;
     u32 end;
 };
 
-struct Operand {
-    ValType type;
-    union {
-        i64 i = 0;
-        f64 f;
-    } val;
+typedef int64_t (*NativeFuncType)(...);
+using LabelMap = std::unordered_map<u32, ControlBlock>;
+using MemsContainer = std::vector<std::vector<char>>;
+
+union WasmVal {
+    i64 i;
+    f64 f;
 };
+
+struct Operand {
+    Operand() = default;
+    Operand(ValType t, i64 i) : type(t), val(i) {};
+    Operand(ValType t, f64 f) : type(t), val(f) {};
+
+    ValType type;
+    WasmVal val;
+};
+
+struct GlobalVar {
+    Operand op;
+    bool mut;
+};
+
+using GlobalsContainer = std::vector<GlobalVar>;
 
 struct RuntimeFunction {
     bool isNative = false;
     module::FuncSignature signature;
+    std::vector<u8> code;
+    std::vector<Operand> locals;
+    LabelMap labelMap;
 
-    module::FunctionBody code;
     NativeFuncType native_ptr;
 };
-using LabelMap = std::unordered_map<u32, ControlBlock>;
 
-//TODO MOVE
-LabelMap createLabelMap(const std::vector<u8> &code) {
-    LabelMap map;
-    std::stack<ControlBlock*> control_stack;
+using FunctionsContainer = std::vector<RuntimeFunction>;
 
-    u32 size = code.size();
-    for (u32 i = 0; i < size; ++i) {
-        u8 op = code[i];
-        switch (op) {
-            case Bytecode::block:
-            case Bytecode::loop:
-            case Bytecode::if_: {
-                u8 block_type = code.at(i+1);
-                if (
-                        block_type != ValType::BLOCK &&
-                        block_type != ValType::F32 &&
-                        block_type != ValType::F64 &&
-                        block_type != ValType::I32 &&
-                        block_type != ValType::I32
-                        ) {
-                    throw std::runtime_error("ILL FORMED BLOCK STRUCTURE");
-                }
-                ControlBlock block{.type = static_cast<Bytecode>(op), .start = (i + 2), .end = 0};
-                map.insert({i, block});
-                control_stack.push(&map.find(i)->second);
-                break;
-            }
-            case Bytecode::end:
-            case Bytecode::else_:{
-                if (control_stack.empty()) {
-                    if (i != size - 1) {
-                        throw std::runtime_error("ILL FORMED BLOCK STRUCTURE");
-                    }
-                } else {
-                    auto block = control_stack.top();
-                    block->end = i;
-                    control_stack.pop();
-                }
-            }
+struct Frame {
+
+    void pushLabel() {
+        control_stack.push_back(labels->find(ip)->second);
+    }
+
+    void popBlocks(i64 n) {
+        for (i64 i = 0; i < n; ++i) {
+            control_stack.pop_back();
         }
     }
-    return map;
-}
+
+    void ret() {
+        control_stack.clear();
+        ip = code.size() - 1;
+    }
+
+    RuntimeFunction *func;
+    std::vector<u8> code;
+    LabelMap *labels;
+    std::vector<Operand> locals;
+    std::deque<ControlBlock> control_stack;
+    u32 ip = 0;
+};
+
 }
 #endif //OWASM_VM_RUNTIME_STRUCTS_HPP

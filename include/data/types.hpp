@@ -18,7 +18,7 @@ enum ValType : u8 {
     F32   = 0x7D,
     F64   = 0x7C,
     BLOCK = 0x40,
-    NREF  = 0x78
+    REF   = 0x78
 };
 
 enum MutableType : u8 {
@@ -26,6 +26,13 @@ enum MutableType : u8 {
     MUT   = 0x01
 };
 
+namespace native {
+enum FuncParams : u8 {
+    REF = '*',
+    INT = 'I',
+    FLOAT = 'F'
+};
+}
 
 // Reference Types
 namespace reftype {

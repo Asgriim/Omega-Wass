@@ -1,7 +1,5 @@
 #include "util/util.hpp"
-
-
-
+#include "algorithm"
 
 namespace omega::wass::util {
 
@@ -40,4 +38,33 @@ i64 readLEB128(const u8* ptr) {
     }
     throw std::overflow_error("SLEB128 exceeds maximum length for int64_t");
 }
+
+
+void trim(std::string &s) {
+    const auto not_space = [](char c){ return !std::isspace(static_cast<unsigned char>(c)); };
+    auto left  = std::find_if(s.begin(), s.end(),     not_space);
+    auto right = std::find_if(s.rbegin(), s.rend(),   not_space).base();
+    if (left < right)
+        s = std::string(left, right);
+    else
+        s.clear();
+}
+
+
+std::pair<std::string, std::string> parse_call(const std::string &input) {
+    auto open  = input.find('(');
+    auto close = input.rfind(')');
+    if (open == std::string::npos || close == std::string::npos || close <= open) {
+        throw std::invalid_argument("Invalid format: expected 'name(signature)'");
+    }
+
+    std::string name   = input.substr(0, open);
+    std::string inside = input.substr(open + 1, close - open - 1);
+
+    trim(name);
+    trim(inside);
+
+    return {name, inside};
+}
+
 }

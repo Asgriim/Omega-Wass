@@ -3,7 +3,8 @@
 #define OWASM_VM_BYTECODE_HPP
 #include "data/types.hpp"
 
-namespace omega::wass {
+namespace omega::wass::runtime {
+
 enum Bytecode : u8 {
     // Control instructions
     unreachable       = 0x00,

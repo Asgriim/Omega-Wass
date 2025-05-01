@@ -13,7 +13,7 @@ ModuleParser::ModuleParser(std::string_view path) : bufReader_(std::ifstream(pat
 WasmModule ModuleParser::parseFromFile() {
     WasmModule module;
     while (!bufReader_.isEnd()) {
-        auto sectionId = static_cast<SectionType>(bufReader_.readLeb128());
+        auto sectionId = static_cast<SectionType>(bufReader_.readULeb128());
 
         switch (sectionId) {
             case SectionType::Custom:
@@ -42,7 +42,7 @@ WasmModule ModuleParser::parseFromFile() {
                 module.exportSection = parseSection<Export>();
                 break;
             case SectionType::Start:
-                module.startSection.functionIndex = bufReader_.readLeb128();
+                module.startSection.functionIndex = bufReader_.readULeb128();
                 break;
             case SectionType::Element:
                 module.elementSection = parseSection<Element>();
@@ -54,10 +54,10 @@ WasmModule ModuleParser::parseFromFile() {
                 module.dataSection = parseSection<DataSegment>();
                 break;
             case SectionType::DataCount:
-                module.dataCountSection.count = bufReader_.readLeb128();
+                module.dataCountSection.count = bufReader_.readULeb128();
                 break;
             default: {
-                uint32_t sectionSize = bufReader_.readLeb128();
+                uint32_t sectionSize = bufReader_.readULeb128();
                 bufReader_.next(sectionSize);
                 break;
             }
@@ -78,10 +78,10 @@ std::vector<CustomSection> ModuleParser::parseCustomSection() {
 Limits ModuleParser::parseLimits() {
     u8 flag = bufReader_.read<u8>();
     Limits limits;
-    limits.min = bufReader_.readLeb128();
+    limits.min = bufReader_.readULeb128();
 
     if (flag == lims::max_flag) {
-        limits.max = bufReader_.readLeb128();
+        limits.max = bufReader_.readULeb128();
     } else {
         limits.max = 0;
     }
@@ -110,7 +110,7 @@ Section ModuleParser::parseOneSectionEntry(){
 template<>
 CustomSection ModuleParser::parseOneSectionEntry() {
     //tbd debug this
-    i64 sectionSize = bufReader_.readLeb128();
+    i64 sectionSize = bufReader_.readULeb128();
     bufReader_.next(sectionSize);
     return {};
 }
@@ -120,7 +120,7 @@ FuncSignature ModuleParser::parseOneSectionEntry() {
     if (bufReader_.read<u8>() != functype::func) {
         throw std::runtime_error("invalid type form");
     }
-    i64 p_count = bufReader_.readLeb128();
+    i64 p_count = bufReader_.readULeb128();
     std::vector<ValType> params;
     params.reserve(p_count);
 
@@ -128,7 +128,7 @@ FuncSignature ModuleParser::parseOneSectionEntry() {
         params.emplace_back(bufReader_.read<ValType>());
     }
 
-    i64 r_count = bufReader_.readLeb128();
+    i64 r_count = bufReader_.readULeb128();
     std::vector<ValType> results;
 
     for (i64 i = 0; i < r_count; ++i) {
@@ -145,7 +145,7 @@ Import ModuleParser::parseOneSectionEntry() {
     imp.kind   = bufReader_.read<ImportKind>();
     switch (imp.kind) {
         case ImportKind::FUNC: {
-            imp.typeIndex = bufReader_.readLeb128();
+            imp.typeIndex = bufReader_.readULeb128();
             break;
         }
         case ImportKind::TABLE: {
@@ -166,7 +166,7 @@ Import ModuleParser::parseOneSectionEntry() {
 
 template<>
  FuncIndex ModuleParser::parseOneSectionEntry() {
-    i64 ind = bufReader_.readLeb128();
+    i64 ind = bufReader_.readULeb128();
     return {static_cast<i32>(ind)};
 }
 
@@ -190,7 +190,7 @@ Export ModuleParser::parseOneSectionEntry() {
     Export e {
         .name = bufReader_.readStr(),
         .kind = bufReader_.read<ExportKind>(),
-        .index = static_cast<u32>(bufReader_.readLeb128())
+        .index = static_cast<u32>(bufReader_.readULeb128())
     };
 
     return e;
@@ -200,11 +200,11 @@ Export ModuleParser::parseOneSectionEntry() {
 template<>
 Element ModuleParser::parseOneSectionEntry() {
     Element e;
-    e.tableIndex = bufReader_.readLeb128();
+    e.tableIndex = bufReader_.readULeb128();
     e.offsetExpr = parseExpr();
-    i64 f_count = bufReader_.readLeb128();
+    i64 f_count = bufReader_.readULeb128();
     for (i64 i = 0; i < f_count; ++i) {
-        e.functionIndices.emplace_back(bufReader_.readLeb128());
+        e.functionIndices.emplace_back(bufReader_.readULeb128());
     }
     return e;
 }
@@ -213,11 +213,14 @@ Element ModuleParser::parseOneSectionEntry() {
 template<>
 FunctionBody ModuleParser::parseOneSectionEntry() {
     FunctionBody body;
-    i64 func_size = bufReader_.readLeb128();
-    i64 locals_count = bufReader_.readLeb128();
+    i64 func_size = bufReader_.readULeb128();
+    i64 locals_count = bufReader_.readULeb128();
     u8 *start = bufReader_.get();
     for (i64 i = 0; i < locals_count; ++i) {
-        body.locals.emplace_back(bufReader_.readLeb128(), bufReader_.read<ValType>());
+        LocalVar l;
+        l.count = bufReader_.readULeb128();
+        l.type  = bufReader_.read<ValType>();
+        body.locals.emplace_back(l);
     }
     func_size -= bufReader_.get() - start + 1;
     body.code.reserve(func_size);
@@ -230,9 +233,9 @@ FunctionBody ModuleParser::parseOneSectionEntry() {
 template<>
 DataSegment ModuleParser::parseOneSectionEntry() {
     DataSegment d;
-    d.memIndex = bufReader_.readLeb128();
+    d.memIndex = bufReader_.readULeb128();
     d.offsetExpr = parseExpr();
-    i64 sz = bufReader_.readLeb128();
+    i64 sz = bufReader_.readULeb128();
     //todo memcpy?
     d.data.reserve(sz);
     for (i64 i = 0; i < sz; ++i) {
@@ -244,8 +247,8 @@ DataSegment ModuleParser::parseOneSectionEntry() {
 template<typename Section>
 std::vector<Section> ModuleParser::parseSection() {
     std::vector<Section> section;
-    i64 sectionSizeByte = bufReader_.readLeb128();
-    i64 sectionSize = bufReader_.readLeb128();
+    i64 sectionSizeByte = bufReader_.readULeb128();
+    i64 sectionSize = bufReader_.readULeb128();
 
     for (i32 i = 0; i < sectionSize; ++i) {
         section.emplace_back(parseOneSectionEntry<Section>());

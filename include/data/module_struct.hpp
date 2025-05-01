@@ -94,13 +94,13 @@ struct Element {
     std::vector<u32> functionIndices;
 };
 
-struct LocalEntry {
+struct LocalVar {
     u32 count;
     ValType type;
 };
 
 struct FunctionBody {
-    std::vector<LocalEntry> locals;
+    std::vector<LocalVar> locals;
     std::vector<u8> code;  // function body (instructions + 0x0B)
 };
 

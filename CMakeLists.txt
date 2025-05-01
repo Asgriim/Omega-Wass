@@ -6,4 +6,5 @@ file(GLOB_RECURSE SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(OWasm_vm main.cpp ${SRC_FILES})
+add_executable(omega-wass main.cpp ${SRC_FILES})
+set(CMAKE_CXX_COMPILER /usr/bin/clang++)
