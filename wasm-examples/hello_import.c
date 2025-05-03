@@ -1,8 +1,4 @@
 __attribute__((import_module("libc")))
-__attribute__((import_name("printf(*)")))
-int printf(const char* fmt);
-
-__attribute__((import_module("libc")))
 __attribute__((import_name("printf(*I)")))
 int my_printf(const char* fmt, int i);
 
@@ -15,15 +11,13 @@ void aboba_print2() {
     my_printf("start2 %d \n", 1);
 }
 
-
-
-void _start() {  // <-- имя функции прямо _start, без alias
+void _start() { 
     aboba_print2();
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 1000; ++i) {
         if (i % 2 == 0)
-            printf("even\n");
+            my_printf("%d : even \n", i);
         else
-            printf("odd\n");
+            my_printf("%d : odd \n", i);
     }
 }
 
