@@ -146,7 +146,8 @@ LabelMap createLabelMap(const std::vector<u8> &code) {
                         block_type != ValType::I32 &&
                         block_type != ValType::I32
                         ) {
-                    throw std::runtime_error("ILL FORMED BLOCK STRUCTURE");
+//                    throw std::runtime_error("ILL FORMED BLOCK STRUCTURE");
+                    continue;
                 }
                 ControlBlock block{.type = static_cast<runtime::Bytecode>(op), .start = (i + 2), .end = 0};
                 map.insert({label_ind, block});

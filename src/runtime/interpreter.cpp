@@ -99,26 +99,32 @@ void Interpreter::callNative(RuntimeFunction &f) {
     auto &sig = f.signature;
     size_t p_count = sig.params.size();
     std::vector<void*> args(p_count);
+    Operand ret(REF, 0L);
 
-    if (p_count == 0 || p_count > MAX_NATIVE_ARGS)
+
+    if (p_count > MAX_NATIVE_ARGS)
         throw std::runtime_error("unsupported native arg count");
 
-    auto caller = callers[p_count];
-    if (!caller)
-        throw std::runtime_error("no caller for this arg count");
+    if (p_count > 0) {
+        auto caller = callers[p_count];
+        if (!caller)
+            throw std::runtime_error("no caller for this arg count");
 
-    for (i64 i = p_count - 1; i >= 0; --i) {
-        auto op = operand_stack_.top();
-        operand_stack_.pop();
+        for (i64 i = p_count - 1; i >= 0; --i) {
+            auto op = operand_stack_.top();
+            operand_stack_.pop();
 
-        if (sig.params[i] == REF) {
-            args[i] = store_.getMem(0, op.val.i);
-        } else {
-            args[i] = reinterpret_cast<void *>(op.val.i);
+            if (sig.params[i] == REF) {
+                args[i] = store_.getMem(0, op.val.i);
+            } else {
+                args[i] = reinterpret_cast<void *>(op.val.i);
+            }
         }
+        ret.val.i = caller(f.native_ptr, args);
+    } else {
+        ret.val.i = f.native_ptr();
     }
-    Operand ret(REF, 0L);
-    ret.val.i = caller(f.native_ptr, args);
+
 
     if (!sig.results.empty()) {
         ret.type = sig.results[0];
@@ -441,7 +447,15 @@ local_set:
     DISPATCH();
 
 local_tee:
-    UNIMPLEMENTED("local_tee");
+    arg_int = readLEB128();
+    op1 = operand_stack_.top();
+    cur_local = &top_frame_->locals[arg_int];
+    if (cur_local->type > ValType::F64) {
+        cur_local->val.i = op1.val.i;
+    } else {
+        UNIMPLEMENTED("local_set with float type");
+    }
+    DISPATCH();
 
 global_get:
     UNIMPLEMENTED("global_get");
@@ -671,7 +685,13 @@ i32_add:
     DISPATCH();
 
 i32_sub:
-    UNIMPLEMENTED("i32_sub");
+    op1 = operand_stack_.top();
+    operand_stack_.pop();
+    op2 = operand_stack_.top();
+    operand_stack_.pop();
+    arg_int = (op2.val.i - op1.val.i);
+    operand_stack_.emplace(I32, arg_int);
+    DISPATCH();
 
 i32_mul:
     UNIMPLEMENTED("i32_mul");
