@@ -2,8 +2,8 @@
 #include <filesystem>
 #include <iostream>
 #include "runtime/vm.hpp"
-#include <fcntl.h>    // для creat(), O_* флагов
-#include <sys/stat.h> // для mode_t и прав доступа
+
+
 int main(int argc, char **argv) {
     std::string_view path;
     int64_t opt = 0;

@@ -36,7 +36,7 @@ NativeFuncType getNativeFuncPtr(std::string_view lib, std::string_view sym_name)
     DlHandlePtr handle(dlopen(lib.data(), RTLD_LAZY));
 
     if (!handle) {
-        throw std::runtime_error("native library not found "  + std::string(lib));
+        throw std::runtime_error("native library not found "  + std::string(dlerror()));
     }
     auto f_ptr = reinterpret_cast<NativeFuncType>(dlsym(handle.get(), sym_name.data()));
 
@@ -146,7 +146,6 @@ LabelMap createLabelMap(const std::vector<u8> &code) {
                         block_type != ValType::I32 &&
                         block_type != ValType::I32
                         ) {
-//                    throw std::runtime_error("ILL FORMED BLOCK STRUCTURE");
                     continue;
                 }
                 ControlBlock block{.type = static_cast<runtime::Bytecode>(op), .start = (i + 2), .end = 0};
@@ -158,7 +157,7 @@ LabelMap createLabelMap(const std::vector<u8> &code) {
             case runtime::Bytecode::else_:{
                 if (control_stack.empty()) {
                     if (i != size - 1) {
-                        throw std::runtime_error("ILL FORMED BLOCK STRUCTURE");
+                        continue;
                     }
                 } else {
                     auto block = control_stack.top();
